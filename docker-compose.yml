@@ -1,27 +1,40 @@
 services:
   db:
     image: postgres:17
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test:
+        - CMD-SHELL
+        - pg_isready -h 127.0.0.1 -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 5s
 
   api:
     build: .
+    restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "${API_PORT:?Set API_PORT in .env}:8000"
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:?Set POSTGRES_USER in .env}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:?Set POSTGRES_DB in .env}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:?Set JWT_ALGORITHM in .env}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:?Set ACCESS_TOKEN_EXPIRE_MINUTES in .env}
+      SEED_USER1_EMAIL: ${SEED_USER1_EMAIL:?Set SEED_USER1_EMAIL in .env}
+      SEED_USER1_PASSWORD: ${SEED_USER1_PASSWORD:?Set SEED_USER1_PASSWORD in .env}
+      SEED_USER2_EMAIL: ${SEED_USER2_EMAIL:?Set SEED_USER2_EMAIL in .env}
+      SEED_USER2_PASSWORD: ${SEED_USER2_PASSWORD:?Set SEED_USER2_PASSWORD in .env}
     depends_on:
       db:
         condition: service_healthy
 
 volumes:
   postgres_data:
+    name: taskapi_postgres_data
