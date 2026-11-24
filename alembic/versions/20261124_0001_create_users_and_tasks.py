@@ -16,6 +16,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    """Create the users and tasks tables and the indexes used by application queries."""
     op.create_table(
         "users",
         sa.Column("id", sa.Integer(), primary_key=True),
@@ -47,6 +48,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Reverse this revision by dropping task and user indexes and tables in dependency order."""
     op.drop_index("ix_tasks_user_id", table_name="tasks")
     op.drop_index("ix_tasks_id", table_name="tasks")
     op.drop_table("tasks")

@@ -1,3 +1,5 @@
+"""Expose authenticated task CRUD endpoints and assemble their controller dependencies."""
+
 from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.orm import Session
 
@@ -12,6 +14,7 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
 def get_task_controller(db: Session = Depends(get_db)) -> TaskController:
+    """Build the task repository, service, and controller for the current request."""
     repository = TaskRepository(db)
     return TaskController(TaskService(repository))
 
@@ -23,6 +26,7 @@ def create_task(
     user_id: int = Depends(get_current_user_id),
     controller: TaskController = Depends(get_task_controller),
 ):
+    """Create a task for the authenticated user."""
     return controller.create_task(user_id=user_id, payload=payload, response=response)
 
 
@@ -32,6 +36,7 @@ def list_tasks(
     user_id: int = Depends(get_current_user_id),
     controller: TaskController = Depends(get_task_controller),
 ):
+    """List the authenticated user's tasks, optionally filtered by status."""
     return controller.list_tasks(user_id=user_id, status_filter=task_status)
 
 
@@ -41,6 +46,7 @@ def get_task(
     user_id: int = Depends(get_current_user_id),
     controller: TaskController = Depends(get_task_controller),
 ):
+    """Retrieve a task belonging to the authenticated user."""
     return controller.get_task(user_id=user_id, task_id=task_id)
 
 
@@ -51,6 +57,7 @@ def update_task(
     user_id: int = Depends(get_current_user_id),
     controller: TaskController = Depends(get_task_controller),
 ):
+    """Partially update a task belonging to the authenticated user."""
     return controller.update_task(user_id=user_id, task_id=task_id, payload=payload)
 
 
@@ -60,5 +67,6 @@ def delete_task(
     user_id: int = Depends(get_current_user_id),
     controller: TaskController = Depends(get_task_controller),
 ):
+    """Delete a task belonging to the authenticated user and return HTTP 204."""
     controller.delete_task(user_id=user_id, task_id=task_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

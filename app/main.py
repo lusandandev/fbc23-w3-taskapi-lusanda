@@ -1,3 +1,5 @@
+"""Create the FastAPI application, register route groups, and configure request and error handling."""
+
 import logging
 import time
 
@@ -28,6 +30,7 @@ app.include_router(health_router)
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
+    """Log the HTTP method, path, response status, and elapsed time for each request."""
     started_at = time.perf_counter()
     status_code = 500
     try:
@@ -53,6 +56,7 @@ async def log_requests(request: Request, call_next):
 async def request_validation_error(request: Request, exc: RequestValidationError):
     # Return 400 as specified, and omit Pydantic's `input` values so passwords
     # and other submitted data are never echoed to the client.
+    """Return validation details without echoing submitted input values to the client."""
     errors = [
         {
             "field": ".".join(str(part) for part in error.get("loc", ())[1:]),
@@ -65,6 +69,7 @@ async def request_validation_error(request: Request, exc: RequestValidationError
 
 @app.exception_handler(Exception)
 async def unexpected_error(request: Request, exc: Exception):
+    """Log an unexpected exception and return a generic server-error response."""
     logger.exception("Unexpected server error", exc_info=exc)
     return JSONResponse(
         status_code=500,

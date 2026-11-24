@@ -1,3 +1,5 @@
+"""Expose registration and login endpoints and translate authentication-service errors into HTTP responses."""
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -14,11 +16,13 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 
 
 def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
+    """Build the authentication service with a repository bound to the request session."""
     return AuthService(UserRepository(db))
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED, response_model=UserResponse)
 def register(payload: UserRegister, service: AuthService = Depends(get_auth_service)):
+    """Register a user and return the public user representation."""
     try:
         return service.register(email=str(payload.email), password=payload.password)
     except EmailAlreadyRegisteredError as exc:
@@ -27,6 +31,7 @@ def register(payload: UserRegister, service: AuthService = Depends(get_auth_serv
 
 @router.post("/login", response_model=TokenResponse)
 def login(payload: UserLogin, service: AuthService = Depends(get_auth_service)):
+    """Authenticate a user and return a bearer access token with its lifetime."""
     try:
         access_token, expires_in = service.login(
             email=str(payload.email), password=payload.password
