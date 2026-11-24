@@ -12,18 +12,22 @@ from app.services.task_service import (
 
 
 class FakeTaskRepository:
+    """Provide an in-memory repository so service tests do not require a database."""
     def __init__(self, tasks=None):
+        """Initialize the in-memory task collection and record create and delete operations."""
         self.tasks = tasks or {}
         self.created = []
         self.deleted = []
 
     def create(self, user_id: int, data: dict):
+        """Create and store a task-like object for a test case."""
         task = SimpleNamespace(id=99, user_id=user_id, **data)
         self.created.append(task)
         self.tasks[task.id] = task
         return task
 
     def list_by_user(self, user_id: int, status_filter=None):
+        """Return only tasks owned by the requested user and matching the optional status."""
         return [
             task
             for task in self.tasks.values()
@@ -32,19 +36,23 @@ class FakeTaskRepository:
         ]
 
     def get_by_id_and_user(self, task_id: int, user_id: int):
+        """Return a task only when the requested user owns it."""
         task = self.tasks.get(task_id)
         return task if task is not None and task.user_id == user_id else None
 
     def save(self, task):
+        """Replace the stored task with its updated in-memory representation."""
         self.tasks[task.id] = task
         return task
 
     def delete(self, task):
+        """Record and remove a task from the in-memory collection."""
         self.deleted.append(task.id)
         del self.tasks[task.id]
 
 
 def build_task(task_id=1, user_id=7, status="todo"):
+    """Build a task-like object with predictable default values for service tests."""
     return SimpleNamespace(
         id=task_id,
         user_id=user_id,
@@ -56,6 +64,7 @@ def build_task(task_id=1, user_id=7, status="todo"):
 
 
 def test_create_task_uses_authenticated_user_and_default_status():
+    """Verify creation associates the task with the supplied user and uses the default status."""
     repo = FakeTaskRepository()
     service = TaskService(repo)
 
@@ -67,6 +76,7 @@ def test_create_task_uses_authenticated_user_and_default_status():
 
 
 def test_list_tasks_can_filter_by_status():
+    """Verify that listing tasks applies the requested status filter."""
     repo = FakeTaskRepository({1: build_task(1, 7, "todo"), 2: build_task(2, 7, "done")})
 
     results = TaskService(repo).list_tasks(7, "done")
@@ -75,6 +85,7 @@ def test_list_tasks_can_filter_by_status():
 
 
 def test_list_tasks_rejects_unknown_status():
+    """Verify that an unsupported status filter raises a domain error."""
     service = TaskService(FakeTaskRepository())
 
     with pytest.raises(InvalidTaskStatusError):
@@ -82,6 +93,7 @@ def test_list_tasks_rejects_unknown_status():
 
 
 def test_get_task_returns_only_task_owned_by_user():
+    """Verify that a user can retrieve an owned task but cannot retrieve another user's task."""
     service = TaskService(FakeTaskRepository({1: build_task()}))
 
     assert service.get_task(7, 1).id == 1
@@ -90,6 +102,7 @@ def test_get_task_returns_only_task_owned_by_user():
 
 
 def test_update_task_applies_only_supplied_fields():
+    """Verify that a partial update changes supplied fields and preserves omitted fields."""
     repo = FakeTaskRepository({1: build_task()})
     service = TaskService(repo)
 
@@ -100,6 +113,7 @@ def test_update_task_applies_only_supplied_fields():
 
 
 def test_done_task_cannot_move_back_to_todo():
+    """Verify the business rule that prevents completed tasks returning to todo."""
     repo = FakeTaskRepository({1: build_task(status="done")})
 
     with pytest.raises(InvalidStatusTransitionError):
@@ -107,6 +121,7 @@ def test_done_task_cannot_move_back_to_todo():
 
 
 def test_delete_task_removes_owned_task():
+    """Verify that deleting an owned task removes it from the repository."""
     repo = FakeTaskRepository({1: build_task()})
 
     TaskService(repo).delete_task(7, 1)
@@ -116,5 +131,6 @@ def test_delete_task_removes_owned_task():
 
 
 def test_update_missing_task_returns_not_found():
+    """Verify that updating a missing task raises the not-found domain error."""
     with pytest.raises(TaskNotFoundError):
         TaskService(FakeTaskRepository()).update_task(7, 100, TaskUpdate(title="Nope"))

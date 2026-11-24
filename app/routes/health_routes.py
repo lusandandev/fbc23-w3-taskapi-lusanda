@@ -1,3 +1,5 @@
+"""Expose a health endpoint that reports whether the database can be reached."""
+
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -12,6 +14,7 @@ router = APIRouter(tags=["health"])
 
 @router.get("/health")
 def health_check(db: Session = Depends(get_db)):
+    """Check database connectivity and return 503 when the database is unavailable."""
     try:
         HealthRepository(db).database_is_available()
         return {"status": "ok", "database": "connected"}

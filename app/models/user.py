@@ -1,3 +1,5 @@
+"""Define the SQLAlchemy user entity and its relationship to owned tasks."""
+
 from datetime import datetime
 
 from sqlalchemy import DateTime, String, func
@@ -7,6 +9,7 @@ from app.db.base import Base
 
 
 class User(Base):
+    """Represent a registered user and the tasks associated with that user."""
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)

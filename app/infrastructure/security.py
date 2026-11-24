@@ -13,10 +13,12 @@ _password_hash = PasswordHasher()
 
 
 def hash_password(password: str) -> str:
+    """Hash a plaintext password with Argon2 before it is stored."""
     return _password_hash.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a supplied password and return false for malformed or invalid hashes."""
     try:
         return _password_hash.verify(hashed_password, plain_password)
     except (VerificationError, InvalidHashError, ValueError):
@@ -24,10 +26,12 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def create_access_token(user_id: int) -> tuple[str, int]:
+    """Sign a JWT containing the user's ID and configured expiration time."""
     settings = get_settings()
     expires_in = settings.access_token_expire_minutes * 60
     expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
     token = jwt.encode(
+        # The subject identifies the user; the expiration claim lets JWT validation reject expired tokens.
         {"sub": str(user_id), "exp": expires_at},
         settings.jwt_secret,
         algorithm=settings.jwt_algorithm,
@@ -36,6 +40,7 @@ def create_access_token(user_id: int) -> tuple[str, int]:
 
 
 def get_user_id_from_token(token: str) -> int | None:
+    """Decode a JWT and return its user ID, or None when the token is invalid."""
     settings = get_settings()
     try:
         payload = jwt.decode(

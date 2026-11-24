@@ -11,6 +11,7 @@ from app.models.user import User
 
 
 def get_or_create_user(db, email: str, password: str) -> User:
+    """Return the existing user for an email or create the account when it is absent."""
     email = email.lower()
     user = db.scalar(select(User).where(User.email == email))
     if user is None:
@@ -22,6 +23,7 @@ def get_or_create_user(db, email: str, password: str) -> User:
 
 
 def main() -> None:
+    """Validate seed credentials and insert demonstration users and tasks without duplicating them."""
     required = ("SEED_USER1_EMAIL", "SEED_USER1_PASSWORD", "SEED_USER2_EMAIL", "SEED_USER2_PASSWORD")
     missing = [name for name in required if not os.getenv(name)]
     if missing:
@@ -44,6 +46,7 @@ def main() -> None:
             existing = db.scalar(
                 select(Task).where(Task.user_id == user.id, Task.title == title)
             )
+            # Skip tasks that already exist so rerunning the seed script does not create duplicates.
             if existing is None:
                 db.add(
                     Task(
