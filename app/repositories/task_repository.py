@@ -1,5 +1,6 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+
 from app.models.task import Task
 
 
@@ -14,6 +15,13 @@ class TaskRepository:
         self.db.refresh(task)
         return task
 
+    def list_by_user(self, user_id: int, status_filter: str | None = None) -> list[Task]:
+        stmt = select(Task).where(Task.user_id == user_id)
+        if status_filter is not None:
+            stmt = stmt.where(Task.status == status_filter)
+        stmt = stmt.order_by(Task.due_date.asc().nulls_last(), Task.id.asc())
+        return list(self.db.scalars(stmt).all())
+
     def get_by_id_and_user(self, task_id: int, user_id: int) -> Task | None:
         stmt = select(Task).where(Task.id == task_id, Task.user_id == user_id)
         return self.db.scalar(stmt)
@@ -22,3 +30,7 @@ class TaskRepository:
         self.db.commit()
         self.db.refresh(task)
         return task
+
+    def delete(self, task: Task) -> None:
+        self.db.delete(task)
+        self.db.commit()
