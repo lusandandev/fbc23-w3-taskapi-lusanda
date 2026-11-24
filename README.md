@@ -1,125 +1,87 @@
-# Containerised Task API: Week 3
+# Task Tracker API
 
-A task tracker REST API built with **Python, FastAPI, PostgreSQL, SQLAlchemy, Alembic and Docker Compose**
+A REST API for tasks with user accounts. Built with Python, FastAPI, PostgreSQL, SQLAlchemy, Alembic and Docker Compose.
 
-## Reference
-`/docs/FVC23 - DEV - Week 3 Pt 1.pdf`
+Brief: `docs/FBC23 - DEV - Week 3 Pt 1.pdf`
 
-## Start the system
+## Run it
 
-Docker and Docker Compose are required. Codespaces works too.
+Only Docker is needed.
 
 ```bash
 cp .env.example .env
-```
-
-Edit `.env` and set a local `POSTGRES_PASSWORD` and a random `JWT_SECRET` of at least 32 characters. The Compose file builds the API `DATABASE_URL` from the same PostgreSQL variables. Leave the two seed user passwords. Then start the API and database:
-
-```bash
-docker compose build
-docker compose up
-```
-
-Compose waits for PostgreSQL's health check. The API container runs `alembic upgrade head` before Uvicorn starts.
-
-- API: <http://localhost:8000>
-- Swagger UI: <http://localhost:8000/docs>
-- Health check: <http://localhost:8000/health>
-
-Then:
-
-```bash
-docker compose down
-```
-
-To remove the database volume and prove that migrations rebuild an empty database:
-
-```bash
-docker compose down -v
 docker compose up --build
 ```
 
-**Warning:** `docker compose down -v` permanently deletes the local PostgreSQL volume.
+The defaults in `.env.example` work for local use. Migrations run automatically before the API starts.
 
-## Seed demonstration data
+- API: <http://localhost:8000>
+- Swagger UI: <http://localhost:8000/docs>
+- Health: <http://localhost:8000/health>
 
-In a second terminal, run:
+Stop: `docker compose down`
+
+Reset the database (deletes all data): `docker compose down -v`
+
+## Seed demo data
+
+With the stack running:
 
 ```bash
 docker compose exec api python -m scripts.seed
 ```
 
-The seed script is idempotent and creates two users plus three tasks if they do not already exist. The seed credentials are configured through `SEED_USER*_EMAIL` and `SEED_USER*_PASSWORD` in `.env`; change them before use. They are demonstration credentials, not production credentials.
+Creates two users and three tasks. The logins come from the `SEED_*` values in `.env` (default `alice@example.com` and `bob@example.com`, password `ChangeMe123!`). Safe to run more than once.
 
-## Authentication
+## Endpoints
 
-Register a user:
-
-```bash
-curl -i -X POST http://localhost:8000/auth/register \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"you@example.com","password":"StrongPass123!"}'
-```
-
-Sign in:
-
-```bash
-curl -X POST http://localhost:8000/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"you@example.com","password":"StrongPass123!"}'
-```
-
-Copy `access_token` from the response and send it on protected requests:
-
-```bash
--H 'Authorization: Bearer YOUR_ACCESS_TOKEN'
-```
-
-Registration and login do not require a token. The health endpoint does not require a token. All task endpoints require one.
-
-## API endpoints
-
-| Method | Endpoint | Purpose | Success |
+| Method | Path | What it does | Success |
 |---|---|---|---|
-| POST | `/auth/register` | Register a user | `201` |
-| POST | `/auth/login` | Sign in and receive a JWT | `200` |
-| GET | `/health` | Check database connectivity | `200` or `503` |
-| POST | `/tasks` | Create a task | `201` + `Location` header |
-| GET | `/tasks` | List own tasks; optional `?status=todo` filter | `200` |
-| GET | `/tasks/{task_id}` | Get one of own tasks | `200` |
-| PATCH | `/tasks/{task_id}` | Partially update own task | `200` |
-| DELETE | `/tasks/{task_id}` | Delete own task | `204` |
+| POST | `/auth/register` | Register a user | 201 |
+| POST | `/auth/login` | Sign in, get a token | 200 |
+| GET | `/health` | Check the database connection | 200 / 503 |
+| POST | `/tasks` | Create a task | 201 + `Location` |
+| GET | `/tasks` | List your tasks (`?status=todo`) | 200 |
+| GET | `/tasks/{id}` | Get one task | 200 |
+| PATCH | `/tasks/{id}` | Update a task | 200 |
+| DELETE | `/tasks/{id}` | Delete a task | 204 |
 
-Valid task statuses are `todo`, `in_progress` and `done`. New tasks default to `todo`. The list is ordered by soonest due date first, with tasks that have no due date at the end. An unknown status filter returns `400`.
+All `/tasks` endpoints need `Authorization: Bearer <token>` from `/auth/login`.
 
-A task with status `done` cannot be moved back to `todo`; the API returns `409` with a clear message. A task owned by another user is treated as not found (`404`).
+## Rules
 
-## Testing
+- Status is `todo`, `in_progress` or `done`. The default is `todo`.
+- The list is sorted by due date, soonest first. Tasks with no due date come last.
+- A `done` task cannot go back to `todo` (409).
+- Another user's task is a 404.
+- Invalid input is a 400. A missing or bad token is a 401.
 
-Install dependencies in a Python 3.12 virtual environment if you want to run tests outside Docker:
+## Tests
 
 ```bash
 python -m venv .venv
-# Windows PowerShell: .venv\Scripts\Activate.ps1
-# macOS/Linux: source .venv/bin/activate
+source .venv/bin/activate   # Windows: .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 pytest -q
 ```
 
-The service tests use a fake task repository and do not need a running PostgreSQL database. The Postman collection is in `postman/Task-Tracker-API.postman_collection.json`; import it into Postman, start the Docker services and run the collection. The collection creates two users, captures their tokens and task IDs, checks endpoint success paths, verifies cross-user task isolation, and exercises failure cases.
+The service tests use a fake repository, so no database is needed.
 
-## Layer responsibilities
+Postman: import `postman/Task-Tracker-API.postman_collection.json`, start the stack, run the collection.
 
-- **Routes:** declare HTTP methods, paths, request models and FastAPI dependencies.
-- **Controllers:** coordinate the service and translate known business exceptions into HTTP status codes.
-- **Services:** implement business rules and call repository interfaces; they do not contain SQL.
-- **Repositories:** own SQLAlchemy queries and persistence operations.
-- **Schemas:** validate request data before business logic is called and shape API responses.
-- **Infrastructure:** password hashing, JWT creation/verification and bearer-token parsing.
+## Structure
 
-`Depends` is FastAPI's dependency-injection mechanism. A route declares that it needs a controller; FastAPI resolves the controller dependency, which requests a DB session, constructs a repository, passes it to a service, and passes the service to the controller. FastAPI then cleans up the request-scoped DB session after the request.
+Request flow: route → controller → service → repository → PostgreSQL.
 
-## Cut list if time is short
+- `app/routes`: paths and FastAPI dependencies
+- `app/controllers`: turn service errors into HTTP responses
+- `app/services`: business rules, no SQL
+- `app/repositories`: all database queries
+- `app/schemas`: request validation and response shapes
+- `app/infrastructure`: password hashing and tokens
 
-Keep all hard requirements and all functional requirements. Drop only non-required polish, in this order: custom logging formatting, extra README examples, and additional seed-data variety. Do not drop Docker, PostgreSQL, FastAPI, migrations, authentication, task ownership, the FR-8 rule, the tests or the Postman collection.
+FastAPI's `Depends` builds each request's chain: the route asks for a controller, which needs a service, which needs a repository, which needs a database session. The session is closed after the request.
 
+## Cut list
+
+If time ran short, i would drop log formatting, extra seed data. Could never be drop a hard requirement.
