@@ -47,5 +47,11 @@ python -m pip download \
 
 **What I used AI for:** I used Google Gemini to check the project against the Week 3 deliverables.
 
+## Router and controller structure
+
+**What I used AI for:** I used Google Gemini to help decide how to structure the code. FastAPI handles routing and controller duties together, so i was confused and my first plan was thin routers in `/routers` with services and repositories behind them. I checked that plan with my senior engineer.
+
+**What I accepted and changed:** I then changed it. After asking Gemini, I separated routers from controllers, as in Week 2's MVC structure, so routers handle HTTP only and controllers translate service errors into HTTP responses.
+
 
 
