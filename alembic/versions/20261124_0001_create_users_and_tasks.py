@@ -17,6 +17,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Create the users and tasks tables and the indexes used by application queries."""
+    # Create the independent user table before the task table references it.
     op.create_table(
         "users",
         sa.Column("id", sa.Integer(), primary_key=True),
@@ -29,6 +30,7 @@ def upgrade() -> None:
     op.create_index("ix_users_id", "users", ["id"])
     op.create_index("ix_users_email", "users", ["email"], unique=True)
 
+    # Tasks belong to a user and are removed when that user is deleted.
     op.create_table(
         "tasks",
         sa.Column("id", sa.Integer(), primary_key=True),
@@ -49,6 +51,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Reverse this revision by dropping task and user indexes and tables in dependency order."""
+    # Drop dependent task indexes and the table before removing the parent user table.
     op.drop_index("ix_tasks_user_id", table_name="tasks")
     op.drop_index("ix_tasks_id", table_name="tasks")
     op.drop_table("tasks")
