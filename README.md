@@ -6,10 +6,23 @@ The project implements the fixed Week 3 specification in `docs/FBC23 - DEV - Wee
 
 ## Run from a fresh clone
 
-Docker is the only software that needs to be installed on the host. The API dependencies are included as pre-downloaded wheels in `wheelhouse/`, so the API image does not need to contact PyPI during its build.
+Docker with Docker Compose is the only software required on the host. The API dependencies are included as pre-downloaded wheels in `wheelhouse/`, so the API image does not need to contact PyPI during its build.
+
+Copy the example environment file:
 
 ```bash
 cp .env.example .env
+```
+
+On Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Build and start the application:
+
+```bash
 docker compose up --build -d
 ```
 
@@ -22,9 +35,11 @@ docker compose logs --tail=100 api
 
 The API container waits for PostgreSQL's health check, runs `alembic upgrade head`, and then starts Uvicorn.
 
-- API: <http://localhost:8000>
-- Swagger UI: <http://localhost:8000/docs>
-- Database health: <http://localhost:8000/health>
+Once running:
+
+- **API base URL:** `http://localhost:8000` (the root path itself is not an endpoint).
+- **Swagger UI:** `http://localhost:8000/docs`
+- **Database health:** `http://localhost:8000/health`
 
 The API service is pinned to `linux/amd64` because the committed wheelhouse contains CPython 3.12 Linux x86-64 wheels. On ARM hosts, Docker may use emulation.
 
@@ -42,7 +57,9 @@ docker compose down -v
 
 ## Configuration
 
-Copy `.env.example` to `.env`. Compose reads `.env` for variable substitution and passes the required values into the API and database containers. `.env` is ignored by Git and must never be committed.
+Copy `.env.example` to `.env`. Compose reads `.env` for variable substitution and passes the required values into the API and database containers.
+
+`.env` is ignored by Git and must never be committed.
 
 The values in `.env.example` are local-development placeholders, not production credentials. Replace the seed-user passwords before running the seed script. Use a newly generated JWT secret for any environment beyond a disposable local demonstration.
 
@@ -81,18 +98,17 @@ Every task endpoint requires `Authorization: Bearer <token>` from `/auth/login`.
 - Invalid request data returns 400; missing or invalid authentication returns 401.
 - Unexpected server errors return a safe message while details are logged on the server.
 
-## Tests
+## Run tests
 
-Run the service-layer tests locally with Python:
+Run the service-layer tests inside the API container. Start the Docker Compose services first.
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate   # Windows PowerShell: .venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-pytest -q
+docker compose exec api pytest -q
 ```
 
-The eight service tests use a fake repository, so they do not need a running database. The Postman collection also exercises endpoint success and failure cases:
+The eight service-layer tests use a fake repository, so they do not require database access. Running them inside the API container ensures they use the same Python 3.12 environment and pinned dependencies as the application.
+
+The Postman collection also exercises endpoint success and failure cases:
 
 `postman/Task-Tracker-API.postman_collection.json`
 
@@ -100,7 +116,9 @@ Import the collection into Postman, start the Compose stack, and run the collect
 
 ## Architecture
 
-Request flow: route → controller → service → repository → PostgreSQL.
+Request flow:
+
+`route → controller → service → repository → PostgreSQL`
 
 - `app/main.py`: creates the FastAPI application, registers routers, middleware and exception handlers.
 - `app/routes`: HTTP routes, request dependencies and authentication requirements.
@@ -120,7 +138,6 @@ FastAPI's `Depends` resolves the request's dependency graph. For task routes, th
 - [AI usage log](docs/ai-log.md)
 - [Decision records](docs/decisions/)
 
-
 ## Cut list
 
-If time becomes constrained, optional log formatting and extra demonstration data can be dropped. Docker, PostgreSQL, FastAPI, migrations, authentication, required task behaviour, tests and documentation are not cut list items because they are hard requirements.
+If time becomes constrained, optional log formatting and extra demonstration data can be dropped. Docker, PostgreSQL, FastAPI, migrations, authentication, required task behaviour, tests and documentation are not cut-list items because they are hard requirements.
