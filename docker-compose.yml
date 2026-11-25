@@ -1,4 +1,6 @@
+# Run PostgreSQL and the FastAPI application as cooperating local services.
 services:
+  # The database stores API data and exposes persistent data through a named volume.
   db:
     image: postgres:17
     restart: unless-stopped
@@ -17,6 +19,7 @@ services:
       retries: 10
       start_period: 5s
 
+  # The API waits for PostgreSQL to become ready before it starts migrations.
   api:
     build: .
     restart: unless-stopped
@@ -35,6 +38,7 @@ services:
       db:
         condition: service_healthy
 
+# Preserve database contents between container recreations.
 volumes:
   postgres_data:
     name: taskapi_postgres_data

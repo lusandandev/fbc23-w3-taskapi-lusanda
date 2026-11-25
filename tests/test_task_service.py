@@ -1,3 +1,5 @@
+"""Exercise task business rules with an in-memory repository and no database dependency."""
+
 from types import SimpleNamespace
 
 import pytest

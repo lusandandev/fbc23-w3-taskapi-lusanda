@@ -1,9 +1,14 @@
+# Web framework and ASGI server
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
+
+# Database, migrations, and validated request models
 sqlalchemy==2.0.36
 psycopg[binary]==3.2.3
 alembic==1.14.0
 pydantic[email]==2.10.3
+
+# Authentication and test dependencies
 pyjwt==2.10.1
 argon2-cffi==23.1.0
 pytest==8.3.4
