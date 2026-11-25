@@ -21,6 +21,7 @@ services:
 
   # The API waits for PostgreSQL to become ready before it starts migrations.
   api:
+    platform: linux/amd64
     build: .
     restart: unless-stopped
     ports:

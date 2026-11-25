@@ -1,0 +1,4 @@
+# Keep source and configuration diffs stable across Windows, Linux and Codespaces.
+* text=auto eol=lf
+*.pdf binary
+*.whl binary
